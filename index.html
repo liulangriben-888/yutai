@@ -525,8 +525,12 @@ function doLogin() {
     document.getElementById('tab-assign-btn').style.display = '';
     document.getElementById('tab-admin-btn').style.display  = '';
   }
-  recs = getRecs(); uses = getUsages(); assigns = getAssigns();
-  renderList();
+      // ↓↓↓ ここから追加 ↓↓↓
+  db.ref('recs').on('value', function(snap){ recs = snap.val() || []; renderList(); });
+  db.ref('uses').on('value', function(snap){ uses = snap.val() || []; renderUsage(); });
+  db.ref('assigns').on('value', function(snap){ assigns = snap.val() || {}; });
+  db.ref('users').on('value', function(snap){ /* ユーザー更新 */ });
+  // ↑↑↑ ここまで追加 ↑↑↑
 }
 document.getElementById('lpw').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 
