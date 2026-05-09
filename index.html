@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>株主優待管理</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+  --pri:#1a3a5c; --pri2:#2a5a8c; --acc:#e8a020;
+  --bg:#f4f6f9; --wh:#fff; --tx:#1a1a2e; --mu:#6b7280;
+  --bd:#e2e8f0; --ok:#16a34a; --ng:#dc2626; --wa:#d97706;
+  --r:12px; --sh:0 2px 12px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Sans','Yu Gothic',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+
+/* LOGIN */
+#login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f2744,#1a3a5c,#2a5a8c);}
+.lbox{background:#fff;border-radius:20px;padding:44px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.llogo{text-align:center;margin-bottom:28px;}
+.llogo .ico{font-size:44px;}
+.llogo h1{font-size:21px;font-weight:700;color:var(--pri);margin-top:6px;}
+.llogo p{font-size:12px;color:var(--mu);margin-top:3px;}
+.fg{margin-bottom:16px;}
+.fg label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;}
+.fg input{width:100%;padding:11px 14px;border:1.5px solid var(--bd);border-radius:9px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;}
+.fg input:focus{border-color:var(--pri2);}
+.lbtn{width:100%;padding:13px;background:var(--pri);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.lbtn:hover{background:var(--pri2);}
+.lerr{color:var(--ng);font-size:12px;text-align:center;margin-top:10px;display:none;}
+
+/* APP */
+#app-page{display:none;}
+.hdr{background:var(--pri);color:#fff;padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.hdr-l{display:flex;align-items:center;gap:10px;}
+.hdr-title{font-size:18px;font-weight:700;}
+.hdr-sub{font-size:11px;opacity:.7;}
+.hdr-r{display:flex;align-items:center;gap:12px;}
+.ubadge{background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;font-size:12px;}
+.logoutbtn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit;}
+.logoutbtn:hover{background:rgba(255,255,255,.2);}
+.main{max-width:1500px;margin:0 auto;padding:22px 28px;}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:18px;flex-wrap:wrap;}
+.tab{padding:7px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--bd);background:#fff;font-family:inherit;transition:all .2s;}
+.tab.active{background:var(--pri);color:#fff;border-color:var(--pri);}
+.tc{display:none;}
+.tc.active{display:block;}
+
+/* SUMMARY */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.sc{background:#fff;border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);border-left:4px solid var(--pri);}
+.sc.a{border-left-color:var(--acc);}
+.sc.s{border-left-color:var(--ok);}
+.sc.w{border-left-color:var(--wa);}
+.sc-lb{font-size:11px;color:var(--mu);margin-bottom:5px;font-weight:500;}
+.sc-v{font-size:24px;font-weight:700;color:var(--pri);}
+.sc.a .sc-v{color:var(--wa);}
+.sc.s .sc-v{color:var(--ok);}
+.sc.w .sc-v{color:var(--ng);}
+
+/* TOOLBAR */
+.toolbar{background:#fff;border-radius:var(--r);padding:14px 18px;box-shadow:var(--sh);margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tdiv{width:1px;height:28px;background:var(--bd);flex-shrink:0;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;border:1.5px solid transparent;transition:all .2s;text-decoration:none;white-space:nowrap;}
+.bp{background:var(--pri);color:#fff;border-color:var(--pri);}
+.bp:hover{background:var(--pri2);}
+.bo{background:#fff;color:var(--tx);border-color:var(--bd);}
+.bo:hover{border-color:var(--pri);color:var(--pri);}
+.bs{background:var(--ok);color:#fff;}
+.bs:hover{opacity:.9;}
+.srch{padding:7px 12px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;width:200px;}
+.srch:focus{border-color:var(--pri2);}
+
+/* TABLE */
+.tw{background:#fff;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.th-bar{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;}
+.th-title{font-size:14px;font-weight:700;}
+.th-cnt{font-size:12px;color:var(--mu);}
+table{width:100%;border-collapse:collapse;}
+thead th{background:#f8fafc;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--mu);border-bottom:1px solid var(--bd);white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--pri);}
+tbody tr{border-bottom:1px solid var(--bd);transition:background .1s;}
+tbody tr:hover{background:#f8fafc;}
+tbody tr:last-child{border-bottom:none;}
+td{padding:10px 12px;font-size:12px;vertical-align:middle;}
+.tdc{font-weight:700;color:var(--pri);font-size:13px;}
+.tdn{font-weight:500;}
+.tda{font-weight:700;color:var(--ok);}
+.tdu{color:var(--ng);}
+.bdg{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.bok{background:#dcfce7;color:#15803d;}
+.bwn{background:#fef9c3;color:#854d0e;}
+.bex{background:#fee2e2;color:#b91c1c;}
+.acts{display:flex;gap:5px;flex-wrap:nowrap;}
+.ibtn{width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;flex-shrink:0;}
+.ibtn:hover{border-color:var(--pri);background:#eff6ff;}
+.ibtn.d:hover{border-color:var(--ng);background:#fef2f2;}
+.pbar-w{background:#e5e7eb;border-radius:4px;height:5px;margin-top:3px;width:80px;}
+.pbar{height:5px;border-radius:4px;background:var(--ok);}
+.pbar.wn{background:var(--wa);}
+.pbar.ng{background:var(--ng);}
+.note-cell{font-size:11px;color:var(--mu);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.mover.open{display:flex;}
+.modal{background:#fff;border-radius:16px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.mhdr{padding:18px 22px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0;}
+.mtitle{font-size:16px;font-weight:700;}
+.mclose{width:30px;height:30px;border-radius:7px;border:none;background:#f1f5f9;cursor:pointer;font-size:16px;line-height:1;}
+.mbody{padding:18px 22px;}
+.mfoot{padding:14px 22px;border-top:1px solid var(--bd);display:flex;gap:8px;justify-content:flex-end;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.frow.full{grid-template-columns:1fr;}
+.frow.tri{grid-template-columns:1fr 1fr 1fr;}
+.mfg label{display:block;font-size:11px;font-weight:600;margin-bottom:5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;}
+.mfg input,.mfg select,.mfg textarea{width:100%;padding:9px 11px;border:1.5px solid var(--bd);border-radius:7px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;}
+.mfg input:focus,.mfg select:focus,.mfg textarea:focus{border-color:var(--pri2);}
+.mfg textarea{resize:vertical;min-height:64px;}
+.req{color:var(--ng);}
+
+/* USAGE */
+.uitem{background:#f8fafc;border-radius:7px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+.uitem-l{font-size:12px;}
+.uitem-d{font-size:10px;color:var(--mu);margin-top:2px;}
+.uitem-a{font-weight:700;color:var(--ng);font-size:13px;white-space:nowrap;margin-left:12px;}
+
+/* ASSIGN */
+.acard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;}
+.acard-hdr{padding:13px 18px;background:#f8fafc;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.acard-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.acard-meta{font-size:11px;color:var(--mu);white-space:nowrap;margin-left:8px;}
+.acard-body{padding:14px 18px;}
+.mrow{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;border:1.5px solid var(--bd);margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.mrow:hover{border-color:var(--pri2);background:#f0f6ff;}
+.mrow.on{border-color:var(--pri);background:#eff6ff;}
+.mrow-l{display:flex;align-items:center;gap:10px;}
+.mav{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.mname{font-size:13px;font-weight:500;}
+.mrole{font-size:10px;color:var(--mu);}
+.toggle{width:40px;height:22px;border-radius:11px;background:#d1d5db;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--pri);}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.toggle.on::after{left:21px;}
+.asum{background:#eff6ff;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap;border:1px solid #bfdbfe;}
+.astat{font-size:12px;color:var(--tx);}
+.astat strong{color:var(--pri);font-size:14px;}
+.afbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.fsel{padding:7px 10px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;background:#fff;}
+.fsel:focus{border-color:var(--pri2);}
+
+/* ADMIN */
+.adpanel{background:#fff;border-radius:var(--r);padding:22px;box-shadow:var(--sh);margin-bottom:20px;}
+.adpanel h3{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--pri);}
+.urow{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:10px 14px;border-radius:8px;margin-bottom:8px;font-size:13px;}
+.urole{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+.r-admin{background:#dbeafe;color:#1d4ed8;}
+.r-fam{background:#dcfce7;color:#15803d;}
+
+/* STORE */
+.sitem{background:#f8fafc;border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--pri2);}
+.sname{font-weight:600;font-size:13px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--mu);}
+.empty .eico{font-size:44px;margin-bottom:10px;}
+.empty p{font-size:14px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:#1e293b;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.toast.show{opacity:1;}
+.toast.ok{background:var(--ok);}
+.toast.err{background:var(--ng);}
+
+@media(max-width:860px){
+  .sgrid{grid-template-columns:repeat(2,1fr);}
+  .main{padding:14px;}
+  .frow,.frow.tri{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-page">
+  <div class="lbox">
+    <div class="llogo">
+      <div class="ico">🏦</div>
+      <h1>株主優待管理</h1>
+      <p>家族間共有システム</p>
+    </div>
+    <div class="fg">
+      <label>ユーザーID</label>
+      <input type="text" id="lid" placeholder="IDを入力" autocomplete="username">
+    </div>
+    <div class="fg">
+      <label>パスワード</label>
+      <input type="password" id="lpw" placeholder="パスワードを入力" autocomplete="current-password">
+    </div>
+    <button class="lbtn" onclick="doLogin()">ログイン</button>
+    <p class="lerr" id="lerr">IDまたはパスワードが正しくありません</p>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app-page">
+  <header class="hdr">
+    <div class="hdr-l">
+      <span style="font-size:22px;">🏦</span>
+      <div>
+        <div class="hdr-title">株主優待管理</div>
+        <div class="hdr-sub">家族間共有システム</div>
+      </div>
+    </div>
+    <div class="hdr-r">
+      <span class="ubadge" id="ubadge">👤</span>
+      <button class="logoutbtn" onclick="doLogout()">ログアウト</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="gotoTab('yutai')">📋 優待一覧</button>
+      <button class="tab" onclick="gotoTab('usage')">💳 利用履歴</button>
+      <button class="tab" id="tab-assign-btn" onclick="gotoTab('assign')" style="display:none;">👥 優待割り当て</button>
+      <button class="tab" id="tab-admin-btn" onclick="gotoTab('admin')" style="display:none;">⚙️ 管理者設定</button>
+    </div>
+
+    <!-- 優待一覧 -->
+    <div class="tc active" id="tc-yutai">
+      <div class="sgrid">
+        <div class="sc"><div class="sc-lb">📦 保有銘柄数</div><div class="sc-v" id="sv-cnt">0</div></div>
+        <div class="sc a"><div class="sc-lb">💰 総保有金額</div><div class="sc-v" id="sv-tot">¥0</div></div>
+        <div class="sc s"><div class="sc-lb">✅ 残高合計</div><div class="sc-v" id="sv-rem">¥0</div></div>
+        <div class="sc w"><div class="sc-lb">⚠️ 期限切れ間近</div><div class="sc-v" id="sv-exp">0件</div></div>
+      </div>
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn bp" id="btn-add" onclick="openAdd()">＋ 新規追加</button>
+          <label class="btn bo" id="btn-import" style="cursor:pointer;">
+            📂 Excelインポート
+            <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importXL(event)">
+          </label>
+        </div>
+        <div class="tdiv"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn bo" onclick="exportXL()">📥 Excel出力</button>
+          <button class="btn bo" onclick="exportPDF()">📄 PDF出力</button>
+        </div>
+        <div class="tdiv"></div>
+        <input class="srch" type="text" id="srch" placeholder="🔍 銘柄・備考を検索..." oninput="renderList()" style="margin-left:auto;">
+      </div>
+      <div class="tw">
+        <div class="th-bar">
+          <span class="th-title">株主優待一覧</span>
+          <span class="th-cnt" id="list-cnt">0件</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="srt('code')">銘柄コード↕</th>
+                <th onclick="srt('name')">銘柄名称↕</th>
+                <th>優待内容</th>
+                <th onclick="srt('expiry')">有効期限↕</th>
+                <th onclick="srt('amt')">保有金額↕</th>
+                <th>利用済</th>
+                <th>残高</th>
+                <th>残高率</th>
+                <th>備考</th>
+                <th>割り当て</th>
+                <th>利用可能店舗</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="list-body"></tbody>
+          </table>
+        </div>
+        <div id="list-empty" class="empty" style="display:none;">
+          <div class="eico">📋</div>
+          <p>優待データがありません</p>
+          <p style="font-size:12px;margin-top:6px;">「新規追加」またはExcelをインポートしてください</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 利用履歴 -->
+    <div class="tc" id="tc-usage">
+      <div class="tw">
+        <div class="th-bar">
+          <span class="th-title">利用履歴</span>
+          <button class="btn bo" onclick="exportUsageXL()" style="font-size:11px;padding:5px 10px;">📥 Excel出力</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>銘柄コード</th>
+                <th>銘柄名称</th>
+                <th>店舗名</th>
+                <th>利用金額</th>
+                <th>メモ</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usage-body"></tbody>
+          </table>
+        </div>
+        <div id="usage-empty" class="empty" style="display:none;">
+          <div class="eico">💳</div><p>利用履歴がありません</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 優待割り当て -->
+    <div class="tc" id="tc-assign">
+      <div class="asum" id="asum"></div>
+      <div class="afbar">
+        <select class="fsel" id="af-member" onchange="renderAssign()">
+          <option value="">── メンバーで絞り込み ──</option>
+        </select>
+        <select class="fsel" id="af-status" onchange="renderAssign()">
+          <option value="">── 割り当て状態 ──</option>
+          <option value="on">割り当て済み</option>
+          <option value="off">未割り当て（全員公開）</option>
+        </select>
+        <button class="btn bo" style="font-size:11px;" onclick="assignAllAll()">全員に一括割り当て</button>
+        <button class="btn bo" style="font-size:11px;color:var(--ng);border-color:#fca5a5;" onclick="clearAllAll()">全割り当てリセット</button>
+      </div>
+      <div id="assign-list"></div>
+    </div>
+
+    <!-- 管理者設定 -->
+    <div class="tc" id="tc-admin">
+      <div class="adpanel">
+        <h3>👥 ユーザー管理</h3>
+        <div id="user-list"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--bd);">
+          <h4 style="font-size:13px;font-weight:600;margin-bottom:10px;">新規ユーザー追加</h4>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="nu-id" placeholder="ユーザーID" style="padding:7px 10px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;width:130px;">
+            <input type="text" id="nu-name" placeholder="表示名" style="padding:7px 10px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;width:120px;">
+            <input type="password" id="nu-pw" placeholder="パスワード" style="padding:7px 10px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;width:130px;">
+            <select id="nu-role" style="padding:7px 10px;border:1.5px solid var(--bd);border-radius:7px;font-size:12px;font-family:inherit;outline:none;">
+              <option value="family">家族</option>
+              <option value="admin">管理者</option>
+            </select>
+            <button class="btn bp" onclick="addUser()">追加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 優待追加/編集モーダル ===== -->
+<div class="mover" id="m-edit">
+  <div class="modal">
+    <div class="mhdr">
+      <span class="mtitle" id="m-edit-title">優待を追加</span>
+      <button class="mclose" onclick="closeM('m-edit')">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="frow">
+        <div class="mfg">
+          <label>銘柄コード <span class="req">*</span></label>
+          <input type="text" id="f-code" placeholder="例: 3197">
+        </div>
+        <div class="mfg">
+          <label>銘柄名称 <span class="req">*</span></label>
+          <input type="text" id="f-name" placeholder="例: すかいらーくホールディングス">
+        </div>
+      </div>
+      <div class="frow full">
+        <div class="mfg">
+          <label>優待内容</label>
+          <input type="text" id="f-cont" placeholder="例: 食事割引券 2,000円分">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="mfg">
+          <label>有効期限日 <span class="req">*</span></label>
+          <input type="date" id="f-exp">
+        </div>
+        <div class="mfg">
+          <label>保有金額（円）<span class="req">*</span></label>
+          <input type="number" id="f-amt" placeholder="例: 2000" min="0">
+        </div>
+      </div>
+      <div class="frow full">
+        <div class="mfg">
+          <label>利用可能店舗（カンマ区切りで複数入力可）</label>
+          <input type="text" id="f-store" placeholder="例: ガスト、バーミヤン、ジョナサン">
+        </div>
+      </div>
+      <div class="frow full">
+        <div class="mfg">
+          <label>備考</label>
+          <textarea id="f-note" placeholder="例: 100株以上保有。使用期限に注意。"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn bo" onclick="closeM('m-edit')">キャンセル</button>
+      <button class="btn bp" onclick="saveRec()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 利用記録モーダル ===== -->
+<div class="mover" id="m-use">
+  <div class="modal">
+    <div class="mhdr">
+      <span class="mtitle" id="m-use-title">利用を記録</span>
+      <button class="mclose" onclick="closeM('m-use')">✕</button>
+    </div>
+    <div class="mbody">
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:4px;">現在の残高</div>
+        <div style="font-size:22px;font-weight:700;color:var(--ok);" id="u-rem">¥0</div>
+      </div>
+      <div class="frow">
+        <div class="mfg">
+          <label>利用日 <span class="req">*</span></label>
+          <input type="date" id="u-date">
+        </div>
+        <div class="mfg">
+          <label>利用金額（円）<span class="req">*</span></label>
+          <input type="number" id="u-amt" placeholder="例: 500" min="1" oninput="chkUAmt()">
+        </div>
+      </div>
+      <div class="frow full">
+        <div class="mfg">
+          <label>店舗名</label>
+          <input type="text" id="u-store" placeholder="例: ガスト 渋谷店">
+        </div>
+      </div>
+      <div class="frow full">
+        <div class="mfg">
+          <label>メモ</label>
+          <textarea id="u-memo" placeholder="任意のメモ"></textarea>
+        </div>
+      </div>
+      <div id="u-warn" style="color:var(--ng);font-size:12px;background:#fef2f2;padding:8px 12px;border-radius:7px;display:none;">⚠️ 入力金額が残高を超えています</div>
+      <div id="u-hist"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn bo" onclick="closeM('m-use')">閉じる</button>
+      <button class="btn bs" onclick="saveUse()">✅ 記録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 店舗モーダル ===== -->
+<div class="mover" id="m-store">
+  <div class="modal">
+    <div class="mhdr">
+      <span class="mtitle" id="m-store-title">利用可能店舗</span>
+      <button class="mclose" onclick="closeM('m-store')">✕</button>
+    </div>
+    <div class="mbody" id="m-store-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STORAGE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyAjWETgPBLRTme3TuuM87VOM4qNxL8eepM",
+  authDomain: "yutai-kanri.firebaseapp.com",
+  databaseURL: "https://yutai-kanri-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "yutai-kanri",
+  storageBucket: "yutai-kanri.firebasestorage.app",
+  messagingSenderId: "623741280032",
+  appId: "1:623741280032:web:fb7c4eb3cd6cbbbb220145"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+var SK='yt_rec_v3', UK='yt_use_v3', USK='yt_usr_v3', AK='yt_asg_v3';
+
+function ld(k) {
+  try { return JSON.parse(localStorage.getItem(k)) || null; } catch(e) { return null; }
+}
+function sv(k, v) {
+  localStorage.setItem(k, JSON.stringify(v));
+}
+function getUsers() {
+  return ld(USK) || [
+    {id:'admin', pw:'admin123', role:'admin', name:'管理者'},
+    {id:'family', pw:'family123', role:'family', name:'家族'}
+  ];
+}
+function getRecs()    { return ld(SK) || []; }
+function getUsages()  { return ld(UK) || []; }
+function getAssigns() { return ld(AK) || {}; }
+
+// ===== STATE =====
+var recs=[], uses=[], assigns={}, me=null, editId=null, useId=null, sk=null, sasc=true;
+
+// ===== AUTH =====
+function doLogin() {
+  var uid = document.getElementById('lid').value.trim();
+  var pw  = document.getElementById('lpw').value;
+  var u   = getUsers().find(function(x){ return x.id===uid && x.pw===pw; });
+  if (!u) { document.getElementById('lerr').style.display='block'; return; }
+  me = u;
+  document.getElementById('lerr').style.display = 'none';
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-page').style.display = 'block';
+  document.getElementById('ubadge').textContent = '👤 ' + u.name + (u.role==='admin' ? ' (管理者)' : '');
+  if (u.role === 'admin') {
+    document.getElementById('tab-assign-btn').style.display = '';
+    document.getElementById('tab-admin-btn').style.display  = '';
+  }
+  recs = getRecs(); uses = getUsages(); assigns = getAssigns();
+  renderList();
+}
+document.getElementById('lpw').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+function doLogout() {
+  me = null;
+  document.getElementById('app-page').style.display  = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('lid').value = '';
+  document.getElementById('lpw').value = '';
+  document.getElementById('tab-assign-btn').style.display = 'none';
+  document.getElementById('tab-admin-btn').style.display  = 'none';
+}
+
+// ===== TABS =====
+function gotoTab(t) {
+  document.querySelectorAll('.tc').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('tc-'+t).classList.add('active');
+  var map = {yutai:'優待一覧', usage:'利用履歴', assign:'優待割り当て', admin:'管理者設定'};
+  document.querySelectorAll('.tab').forEach(function(el){
+    if (el.textContent.indexOf(map[t]) >= 0) el.classList.add('active');
+  });
+  if (t==='usage')  renderUsage();
+  if (t==='assign') renderAssign();
+  if (t==='admin')  renderUsers();
+}
+
+// ===== UTILS =====
+function fmt(n)  { return '¥' + (Math.round(n||0)).toLocaleString('ja-JP'); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function dLeft(d){ return Math.ceil((new Date(d) - new Date()) / 86400000); }
+function usedOf(id){ return uses.filter(function(u){ return u.rid===id; }).reduce(function(s,u){ return s+u.amt; }, 0); }
+
+function toast(msg, cls) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + (cls||'');
+  setTimeout(function(){ t.className='toast'; }, 2800);
+}
+function openM(id)  { document.getElementById(id).classList.add('open'); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.mover').forEach(function(el){
+  el.addEventListener('click', function(e){ if(e.target===el) el.classList.remove('open'); });
+});
+
+function uColor(s) {
+  var c = ['#1a3a5c','#2a7a4c','#7a3a2c','#4a2a7c','#2a5a7c','#7c4a2a','#3a6a2c','#5c2a6c'];
+  var h = 0;
+  for (var i=0; i<s.length; i++) h = s.charCodeAt(i) + ((h<<5)-h);
+  return c[Math.abs(h) % c.length];
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== RENDER LIST =====
+function srt(k) { if(sk===k) sasc=!sasc; else { sk=k; sasc=true; } renderList(); }
+
+function renderList() {
+  var q = (document.getElementById('srch').value||'').toLowerCase();
+  var data = recs.filter(function(r){
+    return r.code.toLowerCase().indexOf(q)>=0
+        || r.name.toLowerCase().indexOf(q)>=0
+        || (r.cont||'').toLowerCase().indexOf(q)>=0
+        || (r.note||'').toLowerCase().indexOf(q)>=0;
+  });
+
+  // 家族は割り当て済み または 未割り当て（全員公開）のみ
+  if (me.role !== 'admin') {
+    data = data.filter(function(r){
+      var a = assigns[r.id] || [];
+      return a.length===0 || a.indexOf(me.id)>=0;
+    });
+  }
+
+  if (sk) {
+    data.sort(function(a,b){
+      var va=a[sk], vb=b[sk];
+      if (sk==='expiry')     { va=new Date(va); vb=new Date(vb); }
+      else if (sk==='amt')   { va=Number(va)||0; vb=Number(vb)||0; }
+      else                   { va=(va||'').toString().toLowerCase(); vb=(vb||'').toString().toLowerCase(); }
+      return sasc ? (va>vb?1:-1) : (va<vb?1:-1);
+    });
+  }
+
+  var tot=0, rem=0, exp=0;
+  recs.forEach(function(r){ tot+=r.amt; rem+=r.amt-usedOf(r.id); if(dLeft(r.expiry)<=30&&dLeft(r.expiry)>0) exp++; });
+  document.getElementById('sv-cnt').textContent = recs.length;
+  document.getElementById('sv-tot').textContent = fmt(tot);
+  document.getElementById('sv-rem').textContent = fmt(rem);
+  document.getElementById('sv-exp').textContent = exp + '件';
+  document.getElementById('list-cnt').textContent = data.length + '件';
+
+  var tbody = document.getElementById('list-body');
+  var empty = document.getElementById('list-empty');
+  tbody.innerHTML = '';
+  if (!data.length) { empty.style.display=''; return; }
+  empty.style.display = 'none';
+
+  var famUsers = getUsers().filter(function(u){ return u.role!=='admin'; });
+  var isAdmin  = me.role==='admin';
+
+  data.forEach(function(r){
+    var used   = usedOf(r.id);
+    var remain = r.amt - used;
+    var pct    = r.amt>0 ? Math.round(remain/r.amt*100) : 0;
+    var dl     = dLeft(r.expiry);
+    var bdg    = dl<0  ? '<span class="bdg bex">期限切れ</span>'
+               : dl<=30 ? '<span class="bdg bwn">残'+dl+'日</span>'
+               :           '<span class="bdg bok">有効</span>';
+    var pc = pct>50 ? '' : pct>20 ? 'wn' : 'ng';
+
+    // 割り当て表示
+    var aIds  = assigns[r.id] || [];
+    var aCell = '';
+    if (isAdmin) {
+      aCell = !aIds.length
+        ? '<span style="font-size:10px;color:var(--mu);">全員公開</span>'
+        : aIds.map(function(uid){
+            var u = famUsers.find(function(x){ return x.id===uid; });
+            return u ? '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;margin:1px;display:inline-block;">'+esc(u.name||uid)+'</span>' : '';
+          }).join('');
+    } else {
+      aCell = aIds.indexOf(me.id)>=0
+        ? '<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;">✓ 割当済</span>'
+        : '<span style="font-size:10px;color:var(--mu);">全員公開</span>';
+    }
+
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="tdc">'+ esc(r.code) +'</td>'
+    + '<td class="tdn">'+ esc(r.name) +'</td>'
+    + '<td style="font-size:11px;max-width:150px;">'+ esc(r.cont||'—') +'</td>'
+    + '<td>'+ r.expiry +'<br>'+ bdg +'</td>'
+    + '<td class="tda">'+ fmt(r.amt) +'</td>'
+    + '<td class="tdu">'+ (used>0?fmt(used):'—') +'</td>'
+    + '<td style="font-weight:700;color:'+(remain<=0?'var(--ng)':'var(--ok)')+';">'+ fmt(remain) +'</td>'
+    + '<td><div style="font-size:11px;margin-bottom:2px;">'+ pct +'%</div><div class="pbar-w"><div class="pbar '+ pc +'" style="width:'+ pct +'%"></div></div></td>'
+    + '<td class="note-cell" title="'+ esc(r.note||'') +'">'+ esc(r.note||'—') +'</td>'
+    + '<td>'+ aCell +'</td>'
+    + '<td>'+ (r.store ? '<button class="btn bo" style="font-size:10px;padding:3px 8px;" onclick="showStore(\''+r.id+'\')">🔍 店舗</button>' : '<span style="color:var(--mu);font-size:11px;">—</span>') +'</td>'
+    + '<td><div class="acts">'
+    + '<button class="ibtn" title="利用記録" onclick="openUse(\''+r.id+'\')">💳</button>'
+    + (isAdmin ? '<button class="ibtn" title="割り当て管理" onclick="jumpAssign(\''+r.id+'\')">👥</button>' : '')
+    + (isAdmin ? '<button class="ibtn" title="編集" onclick="openEdit(\''+r.id+'\')">✏️</button>' : '')
+    + (isAdmin ? '<button class="ibtn d" title="削除" onclick="delRec(\''+r.id+'\')">🗑️</button>' : '')
+    + '</div></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+// ===== ADD / EDIT =====
+function openAdd() {
+  editId = null;
+  document.getElementById('m-edit-title').textContent = '優待を追加';
+  ['f-code','f-name','f-cont','f-store','f-note'].forEach(function(x){ document.getElementById(x).value=''; });
+  document.getElementById('f-exp').value = '';
+  document.getElementById('f-amt').value = '';
+  openM('m-edit');
+}
+
+function openEdit(id) {
+  editId = id;
+  var r = recs.find(function(x){ return x.id===id; });
+  if (!r) return;
+  document.getElementById('m-edit-title').textContent = '優待を編集';
+  document.getElementById('f-code').value  = r.code;
+  document.getElementById('f-name').value  = r.name;
+  document.getElementById('f-cont').value  = r.cont  || '';
+  document.getElementById('f-exp').value   = r.expiry;
+  document.getElementById('f-amt').value   = r.amt;
+  document.getElementById('f-store').value = r.store || '';
+  document.getElementById('f-note').value  = r.note  || '';
+  openM('m-edit');
+}
+
+function saveRec() {
+  var code = document.getElementById('f-code').value.trim();
+  var name = document.getElementById('f-name').value.trim();
+  var exp  = document.getElementById('f-exp').value;
+  var amt  = parseFloat(document.getElementById('f-amt').value);
+  if (!code || !name || !exp || isNaN(amt)) { toast('必須項目（*）を入力してください','err'); return; }
+  var obj = {
+    id:     editId || (Date.now() + Math.random() + ''),
+    code:   code,
+    name:   name,
+    cont:   document.getElementById('f-cont').value.trim(),
+    expiry: exp,
+    amt:    amt,
+    store:  document.getElementById('f-store').value.trim(),
+    note:   document.getElementById('f-note').value.trim()
+  };
+  if (editId) {
+    var i = recs.findIndex(function(x){ return x.id===editId; });
+    recs[i] = obj;
+  } else {
+    recs.push(obj);
+  }
+  db.ref('recs').set(recs);
+  closeM('m-edit');
+  renderList();
+  toast(editId ? '更新しました ✅' : '追加しました ✅', 'ok');
+}
+
+function delRec(id) {
+  if (!confirm('この優待データを削除しますか？')) return;
+  recs  = recs.filter(function(x){ return x.id!==id; });
+  uses  = uses.filter(function(x){ return x.rid!==id; });
+  var a = getAssigns(); delete a[id]; sv(AK, a); assigns = a;
+  db.ref('recs').set(recs); db.ref('uses').set(uses);
+  renderList(); renderUsage();
+  toast('削除しました');
+}
+
+// ===== USAGE =====
+function openUse(id) {
+  useId = id;
+  var r   = recs.find(function(x){ return x.id===id; });
+  if (!r) return;
+  var rem = r.amt - usedOf(id);
+  document.getElementById('m-use-title').textContent = r.name + ' — 利用記録';
+  document.getElementById('u-rem').textContent = fmt(rem);
+  document.getElementById('u-date').value  = today();
+  document.getElementById('u-amt').value   = '';
+  document.getElementById('u-store').value = '';
+  document.getElementById('u-memo').value  = '';
+  document.getElementById('u-warn').style.display = 'none';
+
+  var hist = uses.filter(function(u){ return u.rid===id; }).sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var hel  = document.getElementById('u-hist');
+  if (hist.length) {
+    hel.innerHTML = '<div style="font-size:12px;font-weight:600;margin:14px 0 8px;color:var(--mu);">この優待の利用履歴</div>'
+      + hist.map(function(h){
+          return '<div class="uitem">'
+            + '<div class="uitem-l"><div>'+ esc(h.store||'(店舗名なし)') +'</div>'
+            + '<div class="uitem-d">'+ h.date + (h.memo?' — '+esc(h.memo):'') +'</div></div>'
+            + '<div class="uitem-a">−'+ fmt(h.amt) +'</div></div>';
+        }).join('');
+  } else {
+    hel.innerHTML = '';
+  }
+  openM('m-use');
+}
+
+function chkUAmt() {
+  var r = recs.find(function(x){ return x.id===useId; });
+  if (!r) return;
+  var rem = r.amt - usedOf(useId);
+  var v   = parseFloat(document.getElementById('u-amt').value) || 0;
+  document.getElementById('u-warn').style.display = v>rem ? '' : 'none';
+}
+
+function saveUse() {
+  var amt  = parseFloat(document.getElementById('u-amt').value);
+  var date = document.getElementById('u-date').value;
+  if (!amt || amt<=0 || !date) { toast('金額と日付を入力してください','err'); return; }
+  var r = recs.find(function(x){ return x.id===useId; });
+  if (amt > r.amt - usedOf(useId)) {
+    if (!confirm('残高を超えています。続けますか？')) return;
+  }
+  uses.push({
+    id:    Date.now() + '',
+    rid:   useId,
+    date:  date,
+    amt:   amt,
+    store: document.getElementById('u-store').value.trim(),
+    memo:  document.getElementById('u-memo').value.trim(),
+    code:  r.code,
+    name:  r.name
+  });
+  db.ref('uses').set(uses);
+  closeM('m-use');
+  renderList(); renderUsage();
+  toast('利用を記録しました 💳', 'ok');
+}
+
+function renderUsage() {
+  var tbody = document.getElementById('usage-body');
+  var empty = document.getElementById('usage-empty');
+  var sorted = uses.slice().sort(function(a,b){ return b.date.localeCompare(a.date); });
+  tbody.innerHTML = '';
+  if (!sorted.length) { empty.style.display=''; return; }
+  empty.style.display = 'none';
+  sorted.forEach(function(u){
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+ u.date +'</td>'
+    + '<td class="tdc">'+ esc(u.code) +'</td>'
+    + '<td>'+ esc(u.name) +'</td>'
+    + '<td>'+ esc(u.store||'—') +'</td>'
+    + '<td class="tdu" style="font-weight:700;">−'+ fmt(u.amt) +'</td>'
+    + '<td style="font-size:11px;color:var(--mu);">'+ esc(u.memo||'—') +'</td>'
+    + '<td><button class="ibtn d" onclick="delUse(\''+u.id+'\')">🗑️</button></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function delUse(id) {
+  if (!confirm('この利用記録を削除しますか？')) return;
+  uses = uses.filter(function(x){ return x.id!==id; });
+  db.ref('uses').set(uses); renderUsage(); renderList();
+  toast('削除しました');
+}
+
+// ===== STORE =====
+function showStore(id) {
+  var r = recs.find(function(x){ return x.id===id; });
+  if (!r || !r.store) return;
+  document.getElementById('m-store-title').textContent = r.name + ' — 利用可能店舗';
+  var kws = r.store.split(/[,、，\s]+/).filter(Boolean);
+  var html = '<p style="font-size:12px;color:var(--mu);margin-bottom:12px;">銘柄: <strong>'+ esc(r.code) +' '+ esc(r.name) +'</strong></p>';
+  kws.forEach(function(kw){
+    html += '<div class="sitem">'
+      + '<div class="sname">🏪 '+ esc(kw) +'</div>'
+      + '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">'
+      + '<a href="https://www.google.com/search?q='+encodeURIComponent(kw+' 公式サイト')+'" target="_blank" class="btn bo" style="font-size:10px;padding:3px 8px;">🔍 Google</a>'
+      + '<a href="https://tabelog.com/rstLst/?sa='+encodeURIComponent(kw)+'" target="_blank" class="btn bo" style="font-size:10px;padding:3px 8px;">🍽️ 食べログ</a>'
+      + '<a href="https://www.hotpepper.jp/yiyy/?ss='+encodeURIComponent(kw)+'" target="_blank" class="btn bo" style="font-size:10px;padding:3px 8px;">🌶️ ホットペッパー</a>'
+      + '<a href="https://www.google.com/maps/search/'+encodeURIComponent(kw)+'" target="_blank" class="btn bo" style="font-size:10px;padding:3px 8px;">🗺️ 地図</a>'
+      + '</div></div>';
+  });
+  document.getElementById('m-store-body').innerHTML = html;
+  openM('m-store');
+}
+
+// ===== ASSIGN =====
+function renderAssign() {
+  assigns = getAssigns();
+  var famUsers = getUsers().filter(function(u){ return u.role!=='admin'; });
+  var fMember  = document.getElementById('af-member').value;
+  var fStatus  = document.getElementById('af-status').value;
+
+  // メンバープルダウン更新
+  var sel = document.getElementById('af-member');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">── メンバーで絞り込み ──</option>';
+  famUsers.forEach(function(u){
+    var o = document.createElement('option');
+    o.value = u.id; o.textContent = u.name || u.id;
+    if (u.id===cur) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  // サマリー
+  var tot  = recs.length;
+  var asgn = recs.filter(function(r){ return (assigns[r.id]||[]).length>0; }).length;
+  document.getElementById('asum').innerHTML =
+    '<div class="astat">📦 総銘柄: <strong>'+ tot +'</strong></div>'
+  + '<div class="astat">👥 割り当て済み: <strong>'+ asgn +'</strong></div>'
+  + '<div class="astat">⬜ 全員公開: <strong>'+ (tot-asgn) +'</strong></div>'
+  + '<div class="astat">👤 家族メンバー: <strong>'+ famUsers.length +'名</strong></div>';
+
+  var data = recs.slice();
+  if (fStatus==='on')  data = data.filter(function(r){ return (assigns[r.id]||[]).length>0; });
+  if (fStatus==='off') data = data.filter(function(r){ return !(assigns[r.id]||[]).length; });
+
+  var container = document.getElementById('assign-list');
+  if (!data.length) {
+    container.innerHTML = '<div class="empty"><div class="eico">📋</div><p>該当する優待がありません</p></div>';
+    return;
+  }
+  if (!famUsers.length) {
+    container.innerHTML = '<div class="empty"><div class="eico">👥</div><p>家族メンバーがいません。<br>管理者設定でユーザーを追加してください。</p></div>';
+    return;
+  }
+
+  container.innerHTML = data.map(function(r){
+    var aIds        = assigns[r.id] || [];
+    var dl          = dLeft(r.expiry);
+    var bdg         = dl<0 ? '<span class="bdg bex">期限切れ</span>' : dl<=30 ? '<span class="bdg bwn">残'+dl+'日</span>' : '<span class="bdg bok">有効</span>';
+    var shownUsers  = fMember ? famUsers.filter(function(u){ return u.id===fMember; }) : famUsers;
+    var aCount      = fMember ? (aIds.indexOf(fMember)>=0?1:0) : aIds.length;
+    var metaText    = !aIds.length
+      ? '<span style="color:var(--mu);">全員公開</span>'
+      : '<span style="color:var(--pri);font-weight:600;">'+ aCount +'/'+ shownUsers.length +'名に割り当て済み</span>';
+
+    var mrows = shownUsers.map(function(u){
+      var on  = aIds.indexOf(u.id) >= 0;
+      var ini = (u.name||u.id).charAt(0).toUpperCase();
+      return '<div class="mrow'+(on?' on':'')+'" onclick="toggleAsgn(\''+r.id+'\',\''+u.id+'\')">'
+        + '<div class="mrow-l">'
+        + '<div class="mav" style="background:'+uColor(u.id)+';">'+ ini +'</div>'
+        + '<div><div class="mname">'+ esc(u.name||u.id) +'</div><div class="mrole">家族メンバー</div></div>'
+        + '</div>'
+        + '<div class="toggle'+(on?' on':'')+'" id="tgl-'+r.id+'-'+u.id+'"></div>'
+        + '</div>';
+    }).join('');
+
+    return '<div class="acard">'
+      + '<div class="acard-hdr" onclick="toggleBody(\'ab-'+r.id+'\')">'
+      + '<div class="acard-title"><span style="color:var(--pri);font-weight:700;">'+ esc(r.code) +'</span> '+ esc(r.name) +' '+ bdg +'</div>'
+      + '<div class="acard-meta">'+ metaText +' ▾</div>'
+      + '</div>'
+      + '<div class="acard-body" id="ab-'+r.id+'">'
+      + '<p style="font-size:11px;color:var(--mu);margin-bottom:12px;padding:8px 10px;background:#f8fafc;border-radius:6px;">💡 オンにしたメンバーのみこの優待が表示されます。全員オフ ＝ 全員公開。</p>'
+      + mrows
+      + '<div style="margin-top:10px;display:flex;gap:7px;">'
+      + '<button class="btn bo" style="font-size:11px;padding:4px 10px;" onclick="asgnAll(\''+r.id+'\')">全員に割り当て</button>'
+      + '<button class="btn bo" style="font-size:11px;padding:4px 10px;color:var(--ng);border-color:#fca5a5;" onclick="asgnClear(\''+r.id+'\')">割り当てをリセット</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleBody(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = el.style.display==='none' ? '' : 'none';
+}
+
+function toggleAsgn(rid, uid) {
+  assigns = getAssigns();
+  if (!assigns[rid]) assigns[rid] = [];
+  var i = assigns[rid].indexOf(uid);
+  if (i>=0) assigns[rid].splice(i,1); else assigns[rid].push(uid);
+  if (!assigns[rid].length) delete assigns[rid];
+  db.ref('assigns').set(assigns); renderAssign(); renderList();
+  toast('割り当てを更新しました ✅', 'ok');
+}
+
+function asgnAll(rid) {
+  assigns = getAssigns();
+  var fam = getUsers().filter(function(u){ return u.role!=='admin'; });
+  assigns[rid] = fam.map(function(u){ return u.id; });
+  db.ref('assigns').set(assigns); renderAssign(); renderList();
+  toast('全員に割り当てました ✅', 'ok');
+}
+
+function asgnClear(rid) {
+  assigns = getAssigns();
+  delete assigns[rid];
+  db.ref('assigns').set(assigns); renderAssign(); renderList();
+  toast('割り当てをリセットしました');
+}
+
+function assignAllAll() {
+  var fam = getUsers().filter(function(u){ return u.role!=='admin'; });
+  var a   = {};
+  recs.forEach(function(r){ a[r.id] = fam.map(function(u){ return u.id; }); });
+  sv(AK, a); assigns = a; renderAssign(); renderList();
+  toast('全優待を全員に割り当てました ✅', 'ok');
+}
+
+function clearAllAll() {
+  if (!confirm('全ての割り当てをリセットしますか？\n（全優待が全員公開に戻ります）')) return;
+  sv(AK, {}); assigns = {}; renderAssign(); renderList();
+  toast('全割り当てをリセットしました');
+}
+
+function jumpAssign(rid) {
+  gotoTab('assign');
+  setTimeout(function(){
+    var el = document.getElementById('ab-'+rid);
+    if (el) {
+      var card = el.closest('.acard');
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      card.style.outline = '2px solid var(--pri)';
+      setTimeout(function(){ card.style.outline=''; }, 2000);
+    }
+  }, 200);
+}
+
+// ===== USERS =====
+function renderUsers() {
+  var users = getUsers();
+  document.getElementById('user-list').innerHTML = users.map(function(u){
+    return '<div class="urow">'
+      + '<span>👤 '+ esc(u.name||u.id) +' <span style="color:var(--mu);font-size:10px;">('+esc(u.id)+')</span></span>'
+      + '<div style="display:flex;align-items:center;gap:7px;">'
+      + '<span class="urole '+(u.role==='admin'?'r-admin':'r-fam')+'">'+(u.role==='admin'?'管理者':'家族')+'</span>'
+      + (u.id!==me.id ? '<button class="ibtn d" onclick="delUser(\''+u.id+'\')">🗑️</button>' : '')
+      + '</div></div>';
+  }).join('');
+}
+
+function addUser() {
+  var id   = document.getElementById('nu-id').value.trim();
+  var name = document.getElementById('nu-name').value.trim();
+  var pw   = document.getElementById('nu-pw').value;
+  var role = document.getElementById('nu-role').value;
+  if (!id || !pw) { toast('IDとパスワードを入力してください','err'); return; }
+  var users = getUsers();
+  if (users.find(function(u){ return u.id===id; })) { toast('このIDは既に使われています','err'); return; }
+  users.push({id:id, pw:pw, role:role, name:name||id});
+  db.ref('users').set(users);
+  ['nu-id','nu-name','nu-pw'].forEach(function(x){ document.getElementById(x).value=''; });
+  renderUsers();
+  toast('ユーザーを追加しました ✅', 'ok');
+}
+
+function delUser(id) {
+  if (!confirm('ユーザー「'+id+'」を削除しますか？')) return;
+  var users = getUsers().filter(function(u){ return u.id!==id; });
+  db.ref('users').set(users); renderUsers();
+  toast('削除しました');
+}
+
+// ===== IMPORT EXCEL =====
+function importXL(event) {
+  var file = event.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var wb   = XLSX.read(e.target.result, {type:'array'});
+      var ws   = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      var added = 0;
+      rows.forEach(function(row){
+        var code = String(row['銘柄コード']||row['code']||'').trim();
+        var name = String(row['銘柄名称']||row['銘柄名']||row['name']||'').trim();
+        if (!code || !name) return;
+        var exp = row['有効期限日']||row['有効期限']||row['expiry']||'';
+        if (exp && typeof exp==='number') {
+          var d = XLSX.SSF.parse_date_code(exp);
+          exp = d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+        } else { exp = String(exp).trim(); }
+        recs.push({
+          id:     Date.now() + Math.random() + '',
+          code:   code,
+          name:   name,
+          cont:   String(row['優待内容']||'').trim(),
+          expiry: exp || today(),
+          amt:    parseFloat(row['保有金額']||0) || 0,
+          store:  String(row['利用可能店舗']||'').trim(),
+          note:   String(row['備考']||row['note']||'').trim()
+        });
+        added++;
+      });
+      db.ref('recs').set(recs); renderList();
+      toast(added+'件インポートしました ✅', 'ok');
+    } catch(err) {
+      toast('Excelの読み込みに失敗しました', 'err');
+    }
+    event.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ===== EXPORT EXCEL =====
+function exportXL() {
+  var data = recs.map(function(r){
+    var u = usedOf(r.id);
+    return {
+      '銘柄コード':   r.code,
+      '銘柄名称':     r.name,
+      '優待内容':     r.cont  || '',
+      '有効期限日':   r.expiry,
+      '保有金額':     r.amt,
+      '利用済金額':   u,
+      '残高':         r.amt - u,
+      '利用可能店舗': r.store || '',
+      '備考':         r.note  || ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [10,22,22,14,12,12,12,25,25].map(function(w){ return {wch:w}; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '株主優待一覧');
+  XLSX.writeFile(wb, '株主優待一覧.xlsx');
+  toast('Excelを出力しました 📥', 'ok');
+}
+
+function exportUsageXL() {
+  var data = uses.map(function(u){
+    return {'日付':u.date,'銘柄コード':u.code,'銘柄名称':u.name,'店舗名':u.store||'','利用金額':u.amt,'メモ':u.memo||''};
+  });
+  var ws = XLSX.utils.json_to_sheet(data);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '利用履歴');
+  XLSX.writeFile(wb, '利用履歴.xlsx');
+  toast('Excelを出力しました 📥', 'ok');
+}
+
+// ===== EXPORT PDF =====
+function exportPDF() {
+  var jsPDF = window.jspdf.jsPDF;
+  var doc   = new jsPDF({orientation:'landscape'});
+  doc.setFontSize(15);
+  doc.text('Kabunushi Yutai List', 14, 16);
+  doc.setFontSize(9);
+  doc.text('Output: ' + today(), 14, 23);
+  var rows = recs.map(function(r){
+    var u = usedOf(r.id);
+    return [r.code, r.name, r.cont||'', r.expiry, fmt(r.amt), fmt(u), fmt(r.amt-u), r.store||'', r.note||''];
+  });
+  doc.autoTable({
+    head: [['Code','Name','Content','Expiry','Amount','Used','Balance','Store','Note']],
+    body: rows, startY: 28,
+    styles: {fontSize:8},
+    headStyles: {fillColor:[26,58,92]},
+    columnStyles: {8:{cellWidth:30}}
+  });
+  doc.save('株主優待一覧.pdf');
+  toast('PDFを出力しました 📄', 'ok');
+}
+</script>
+</body>
+</html>
